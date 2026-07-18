@@ -1,4 +1,4 @@
-const PUBLIC_ORIGIN = "https://onelink.f5.si";
+const PUBLIC_ORIGIN = "https://1lk.f5.si";
 const STORAGE_KEY = "onelink-pending";
 const RESERVED = new Set([
   "css",
