@@ -122,14 +122,12 @@ body {
   font-size: clamp(1.35rem, 3.2vw, 1.85rem);
   font-weight: 500;
   line-height: 1.35;
-  max-width: auto;
   margin: 0 0 0.75rem;
   color: var(--moss);
 }
 
 .lede {
   margin: 0 0 2.25rem;
-  max-width: 40ch;
   font-size: 1.05rem;
   line-height: 1.55;
   color: color-mix(in srgb, var(--ink) 72%, transparent);
