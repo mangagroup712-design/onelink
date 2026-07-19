@@ -123,7 +123,7 @@ form.addEventListener("submit", async (event) => {
 
       showResult({
         mode: "instant",
-        code: `~${payload}`,
+        code: payload,
         shortUrl,
         url: normalized,
         createdAt: new Date().toISOString(),

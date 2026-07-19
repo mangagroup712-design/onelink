@@ -22,6 +22,12 @@ function pathToken() {
   return raw;
 }
 
+async function redirectTo(url) {
+  titleEl.textContent = "移動しています…";
+  textEl.textContent = url;
+  location.replace(url);
+}
+
 async function main() {
   const token = pathToken();
 
@@ -31,15 +37,14 @@ async function main() {
   }
 
   try {
+    // Legacy instant links: /~u… or /~z…
     if (token.startsWith("~") && token.length > 1) {
       const url = await decodeDestination(token.slice(1));
       if (!url) {
         notFound("この短縮リンクは壊れているか、形式が正しくありません。");
         return;
       }
-      titleEl.textContent = "移動しています…";
-      textEl.textContent = url;
-      location.replace(url);
+      await redirectTo(url);
       return;
     }
 
@@ -53,14 +58,19 @@ async function main() {
     const links = mergeLinks(published, pending);
     const entry = links[token];
 
-    if (!entry || !entry.url) {
-      notFound(`「${token}」は登録されていないか、まだ公開前です。`);
+    if (entry?.url) {
+      await redirectTo(entry.url);
       return;
     }
 
-    titleEl.textContent = "移動しています…";
-    textEl.textContent = entry.url;
-    location.replace(entry.url);
+    // Instant packed links share the same path shape as vanity codes
+    const url = await decodeDestination(token);
+    if (url) {
+      await redirectTo(url);
+      return;
+    }
+
+    notFound(`「${token}」は登録されていないか、まだ公開前です。`);
   } catch {
     notFound("リンク情報の読み込みに失敗しました。");
   }
