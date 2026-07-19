@@ -19,10 +19,6 @@ const FLAG_HTTP = 1;
 const FLAG_WWW = 2;
 const FLAG_ROOT = 4;
 const FLAG_COMPRESSED = 128;
-const AUTO_CODE_MIN_LENGTH = 4;
-const AUTO_CODE_MAX_LENGTH = 10;
-const AUTO_CODE_ALPHABET =
-  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 
 function bytesToBase64Url(bytes) {
   let bin = "";
@@ -138,62 +134,26 @@ export function isValidCode(code) {
   );
 }
 
-function randomCode(length) {
-  const chars = AUTO_CODE_ALPHABET;
-  const bytes = new Uint8Array(length);
-  crypto.getRandomValues(bytes);
-  let out = "";
-  for (let i = 0; i < length; i += 1) {
-    out += chars[bytes[i] % chars.length];
-  }
-  return out;
-}
-
-function findExistingCodeByUrl(links, targetUrl) {
-  for (const [code, entry] of Object.entries(links)) {
-    if (
-      entry?.url === targetUrl &&
-      code.length >= AUTO_CODE_MIN_LENGTH &&
-      code.length <= AUTO_CODE_MAX_LENGTH
-    ) {
-      return code;
-    }
-  }
-  return null;
-}
-
-function generateUniqueCode(links) {
-  const attemptsPerLength = 128;
-  for (let length = AUTO_CODE_MIN_LENGTH; length <= AUTO_CODE_MAX_LENGTH; length += 1) {
-    for (let i = 0; i < attemptsPerLength; i += 1) {
-      const code = randomCode(length);
-      if (isValidCode(code) && !links[code]) return code;
-    }
-  }
-
-  let code = "";
-  do {
-    code = randomCode(AUTO_CODE_MAX_LENGTH);
-  } while (!isValidCode(code) || links[code]);
-  return code;
-}
-
 export async function encodeDestination(url) {
-  const published = await loadLinks();
-  const pending = loadPending();
-  const links = mergeLinks(published, pending);
+  const { flags, body } = packUrlParts(url);
+  const candidates = [];
 
-  const existing = findExistingCodeByUrl(links, url);
-  if (existing) return existing;
-
-  const code = generateUniqueCode(links);
-
-  pending[code] = {
-    url,
-    createdAt: new Date().toISOString(),
+  const build = (outFlags, payload) => {
+    const bytes = new Uint8Array(1 + payload.length);
+    bytes[0] = outFlags;
+    bytes.set(payload, 1);
+    return bytesToBase64Url(bytes);
   };
-  savePending(pending);
-  return code;
+
+  candidates.push(build(flags, body));
+
+  const compressed = await compressBytes(body);
+  if (compressed && compressed.length < body.length) {
+    candidates.push(build(flags | FLAG_COMPRESSED, compressed));
+  }
+
+  candidates.sort((a, b) => a.length - b.length);
+  return candidates[0];
 }
 
 async function decodePacked(payload) {
