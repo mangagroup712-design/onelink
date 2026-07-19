@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = __dirname;
 const port = Number(process.env.PORT || 8080);
+const host = process.env.HOST || "0.0.0.0";
 
 const types = {
   ".html": "text/html; charset=utf-8",
@@ -14,6 +15,7 @@ const types = {
   ".json": "application/json; charset=utf-8",
   ".svg": "image/svg+xml",
   ".ico": "image/x-icon",
+  ".png": "image/png",
   ".txt": "text/plain; charset=utf-8",
 };
 
@@ -48,11 +50,12 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // GitHub Pages と同じく、無いパスは 404.html を返す
+  // GitHub Pages / Cloudflare Pages と同じく、無いパスは 404.html を返す
   const fallback = path.join(root, "404.html");
   send(res, 404, fallback);
 });
 
-server.listen(port, () => {
+server.listen(port, host, () => {
   console.log(`OneLink local server: http://localhost:${port}`);
+  console.log(`LAN access: http://<your-ip>:${port}`);
 });

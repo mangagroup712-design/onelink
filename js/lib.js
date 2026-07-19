@@ -11,18 +11,49 @@ const RESERVED = new Set([
   "cname",
   "favicon.ico",
   "robots.txt",
+  "demo",
+  "og.png",
 ]);
 
-const alphabet =
-  "23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+function bytesToBase64Url(bytes) {
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
 
-function randomCode(length = 7) {
-  const bytes = crypto.getRandomValues(new Uint8Array(length));
-  let out = "";
-  for (const b of bytes) {
-    out += alphabet[b % alphabet.length];
+function base64UrlToBytes(text) {
+  const padded = text.replace(/-/g, "+").replace(/_/g, "/");
+  const pad = padded.length % 4 === 0 ? "" : "=".repeat(4 - (padded.length % 4));
+  const bin = atob(padded + pad);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+async function compressBytes(bytes) {
+  if (typeof CompressionStream !== "function") return null;
+  const stream = new Blob([bytes])
+    .stream()
+    .pipeThrough(new CompressionStream("deflate-raw"));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+async function decompressBytes(bytes) {
+  if (typeof DecompressionStream !== "function") return null;
+  const stream = new Blob([bytes])
+    .stream()
+    .pipeThrough(new DecompressionStream("deflate-raw"));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+export function publicOrigin() {
+  if (
+    typeof location !== "undefined" &&
+    /^(localhost|127\.0\.0\.1)$/i.test(location.hostname)
+  ) {
+    return location.origin;
   }
-  return out;
+  return PUBLIC_ORIGIN;
 }
 
 export function normalizeUrl(input) {
@@ -50,6 +81,35 @@ export function isValidCode(code) {
   );
 }
 
+export async function encodeDestination(url) {
+  const raw = new TextEncoder().encode(url);
+  const compressed = await compressBytes(raw);
+  if (compressed && compressed.length < raw.length) {
+    return `z${bytesToBase64Url(compressed)}`;
+  }
+  return `u${bytesToBase64Url(raw)}`;
+}
+
+export async function decodeDestination(payload) {
+  if (!payload || payload.length < 2) return null;
+  const kind = payload[0];
+  const body = payload.slice(1);
+
+  try {
+    const bytes = base64UrlToBytes(body);
+    let decoded = bytes;
+    if (kind === "z") {
+      decoded = (await decompressBytes(bytes)) || bytes;
+    } else if (kind !== "u") {
+      return null;
+    }
+    const url = new TextDecoder().decode(decoded);
+    return normalizeUrl(url);
+  } catch {
+    return null;
+  }
+}
+
 export async function loadLinks() {
   const res = await fetch("/links.json", { cache: "no-store" });
   if (!res.ok) return {};
@@ -75,7 +135,11 @@ export function mergeLinks(published, pending) {
 }
 
 export function shortUrlFor(code) {
-  return `${PUBLIC_ORIGIN}/${code}`;
+  return `${publicOrigin()}/${code}`;
+}
+
+export function instantShortUrl(payload) {
+  return `${publicOrigin()}/~${payload}`;
 }
 
 export function redirectHtml(destination) {
@@ -98,14 +162,6 @@ export function redirectHtml(destination) {
 </body>
 </html>
 `;
-}
-
-export function createUniqueCode(existing) {
-  for (let i = 0; i < 20; i += 1) {
-    const code = randomCode();
-    if (!existing[code] && isValidCode(code)) return code;
-  }
-  throw new Error("ユニークなコードを生成できませんでした");
 }
 
 export { PUBLIC_ORIGIN };

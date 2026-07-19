@@ -42,9 +42,9 @@
         <p class="brand">OneLink</p>
         <h1 class="headline">長いリンクを、一息で渡せる形に。</h1>
         <p class="lede">
-          URL を貼り付けて短縮。
+          URL を貼り付けて短縮。サーバー不要の静的サイトなので、
           <span class="mono">1lk.f5.si/…</span>
-          の短いリンクになります。
+          はどのデバイスからでも使えます。
         </p>
 
         <div class="form-shell">
@@ -68,7 +68,7 @@
             </button>
 
             <label class="custom-field hidden" id="custom-field">
-              <span>カスタムコード（1lk.f5.si/ここ）</span>
+              <span>カスタムコード（1lk.f5.si/ここ）※公開用ファイルの Push が必要</span>
               <input
                 id="custom-code"
                 type="text"
@@ -91,12 +91,12 @@
             </div>
             <p class="result-meta" id="result-meta"></p>
             <div class="result-actions">
-              <button type="button" id="download-btn" class="btn-secondary">
+              <button type="button" id="download-btn" class="btn-secondary hidden">
                 公開用ファイルをダウンロード
               </button>
             </div>
-            <p class="hint" id="publish-hint">
-              GitHub Pages に載せるには、ダウンロードしたファイルをリポジトリへ追加して
+            <p class="hint hidden" id="publish-hint">
+              カスタムコードを GitHub Pages に載せるには、ダウンロードしたファイルをリポジトリへ追加して
               Push してください。
             </p>
           </div>
@@ -104,7 +104,7 @@
       </main>
 
       <footer class="site-footer">
-        <p>OneLink — URL 短縮</p>
+        <p>OneLink - URL短縮</p>
       </footer>
     </div>
 

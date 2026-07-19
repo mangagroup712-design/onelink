@@ -1,5 +1,6 @@
 import {
-  createUniqueCode,
+  encodeDestination,
+  instantShortUrl,
   isValidCode,
   loadLinks,
   loadPending,
@@ -21,6 +22,7 @@ const shortUrlEl = document.getElementById("short-url");
 const resultMeta = document.getElementById("result-meta");
 const copyBtn = document.getElementById("copy-btn");
 const downloadBtn = document.getElementById("download-btn");
+const publishHint = document.getElementById("publish-hint");
 const submitBtn = document.getElementById("submit-btn");
 
 let lastCreated = null;
@@ -37,10 +39,13 @@ function hideBanner() {
 
 function showResult(entry) {
   lastCreated = entry;
-  const shortUrl = shortUrlFor(entry.code);
-  shortUrlEl.href = shortUrl;
-  shortUrlEl.textContent = shortUrl;
+  shortUrlEl.href = entry.shortUrl;
+  shortUrlEl.textContent = entry.shortUrl;
   resultMeta.textContent = `行き先: ${entry.url}`;
+
+  const needsPublish = entry.mode === "vanity";
+  downloadBtn.classList.toggle("hidden", !needsPublish);
+  publishHint.classList.toggle("hidden", !needsPublish);
   result.classList.remove("hidden");
 }
 
@@ -75,41 +80,60 @@ form.addEventListener("submit", async (event) => {
   submitBtn.textContent = "作成中…";
 
   try {
-    const published = await loadLinks();
-    const pending = loadPending();
-    const existing = mergeLinks(published, pending);
-
-    let code = customCodeInput.value.trim();
-    const useCustom = !customField.classList.contains("hidden") && code;
+    const custom = customCodeInput.value.trim();
+    const useCustom = !customField.classList.contains("hidden") && custom;
 
     if (useCustom) {
-      if (!isValidCode(code)) {
+      if (!isValidCode(custom)) {
         showBanner(
           "カスタムコードは 3〜32 文字の英数字・ハイフン・アンダースコアのみです",
         );
         return;
       }
-      if (existing[code]) {
+
+      const published = await loadLinks();
+      const pending = loadPending();
+      const existing = mergeLinks(published, pending);
+
+      if (existing[custom]) {
         showBanner("そのカスタムコードは既に使われています");
         return;
       }
+
+      const entry = {
+        url: normalized,
+        createdAt: new Date().toISOString(),
+      };
+      pending[custom] = entry;
+      savePending(pending);
+
+      showResult({
+        mode: "vanity",
+        code: custom,
+        shortUrl: shortUrlFor(custom),
+        ...entry,
+      });
+      showBanner(
+        "カスタムコードは作成済みです。本番反映にはファイルをダウンロードして Push してください。",
+        "warn",
+      );
     } else {
-      code = createUniqueCode(existing);
+      const payload = await encodeDestination(normalized);
+      const shortUrl = instantShortUrl(payload);
+
+      showResult({
+        mode: "instant",
+        code: `~${payload}`,
+        shortUrl,
+        url: normalized,
+        createdAt: new Date().toISOString(),
+      });
+      showBanner(
+        "短縮リンクの準備ができました。どのデバイスからでもすぐに使えます。",
+        "ok",
+      );
     }
 
-    const entry = {
-      url: normalized,
-      createdAt: new Date().toISOString(),
-    };
-
-    pending[code] = entry;
-    savePending(pending);
-
-    showResult({ code, ...entry });
-    showBanner(
-      "ブラウザ上では作成済みです。本番反映にはファイルをダウンロードして Push してください。",
-      "warn",
-    );
     urlInput.value = "";
     customCodeInput.value = "";
   } catch (err) {
@@ -123,7 +147,7 @@ form.addEventListener("submit", async (event) => {
 copyBtn.addEventListener("click", async () => {
   if (!lastCreated) return;
   try {
-    await navigator.clipboard.writeText(shortUrlFor(lastCreated.code));
+    await navigator.clipboard.writeText(lastCreated.shortUrl);
     copyBtn.textContent = "コピー済み";
     setTimeout(() => {
       copyBtn.textContent = "コピー";
@@ -134,7 +158,7 @@ copyBtn.addEventListener("click", async () => {
 });
 
 downloadBtn.addEventListener("click", async () => {
-  if (!lastCreated) return;
+  if (!lastCreated || lastCreated.mode !== "vanity") return;
   const published = await loadLinks();
   const pending = loadPending();
   const merged = mergeLinks(published, pending);
