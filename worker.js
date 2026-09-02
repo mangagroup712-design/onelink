@@ -280,16 +280,55 @@ function landingHtml() {
   <title>OneLink</title>
   <style>
     body { font-family: system-ui, sans-serif; margin: 0; min-height: 100vh; display: grid; place-items: center; background: #0b1020; color: #edf2ff; }
-    main { max-width: 52rem; padding: 2rem; text-align: center; }
+    main { box-sizing: border-box; width: min(92vw, 40rem); padding: 2rem; }
+    h1 { margin-top: 0; }
+    form { display: grid; gap: .75rem; }
+    input, button { box-sizing: border-box; border: 0; border-radius: .6rem; padding: .85rem 1rem; font: inherit; }
+    input { width: 100%; }
+    button { cursor: pointer; background: #7dd3fc; color: #07111c; font-weight: 700; }
+    #result { overflow-wrap: anywhere; }
     a { color: #7dd3fc; }
   </style>
 </head>
 <body>
   <main>
-    <h1>OneLink Worker</h1>
-    <p>このサイトは Cloudflare Worker で URL 短縮を動的に管理しています。</p>
-    <p><a href="/">トップへ戻る</a></p>
+    <h1>OneLink</h1>
+    <p>URLを1〜6文字の英数字コードに短縮します。</p>
+    <form id="form">
+      <input id="target" type="url" placeholder="https://example.com/long/path" required>
+      <input id="custom" pattern="[A-Za-z0-9]{1,6}" maxlength="6" placeholder="任意のコード（1〜6文字）">
+      <button>短縮する</button>
+    </form>
+    <p id="message" role="status"></p>
+    <p id="result"></p>
   </main>
+  <script>
+    const form = document.getElementById("form");
+    const target = document.getElementById("target");
+    const custom = document.getElementById("custom");
+    const message = document.getElementById("message");
+    const result = document.getElementById("result");
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      message.textContent = "作成中…";
+      result.textContent = "";
+      try {
+        const response = await fetch("/api/shorten", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: target.value, custom: custom.value })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "作成に失敗しました");
+        message.textContent = "短縮しました";
+        result.innerHTML = '<a href="' + data.shortUrl + '">' + data.shortUrl + "</a>";
+        target.value = "";
+        custom.value = "";
+      } catch (error) {
+        message.textContent = error.message;
+      }
+    });
+  </script>
 </body>
 </html>`;
 }
@@ -360,9 +399,11 @@ export default {
     }
 
     if (!rawPath) {
-      if (typeof env.ASSETS !== "undefined") return env.ASSETS.fetch(request);
       return new Response(landingHtml(), {
-        headers: { "Content-Type": "text/html; charset=utf-8" },
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "no-store",
+        },
       });
     }
 

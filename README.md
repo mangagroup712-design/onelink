@@ -75,6 +75,19 @@ GitHub リポジトリを Cloudflare の Workers & Pages に接続するだけ�
 
 GitHub Actions でデプロイする場合は、`CLOUDFLARE_API_TOKEN` などの秘密情報を GitHub Secrets に登録し、そこで `wrangler deploy` を実行します。KV ID が placeholder のままだと本番デプロイできません。
 
+### Cloudflare Dashboard から直接アップロードする場合
+
+`worker.js` は静的ファイルを必要としない単体 Worker として動作します。Cloudflare Dashboard の **Workers & Pages → Create → Worker → Deploy → Edit code** で `worker.js` の内容を貼り付けて保存・デプロイできます。
+
+ただし、コードを保存する KV は Dashboard 側で別途作成して、この Worker の **Settings → Bindings → KV namespace bindings** に次の名前で追加してください。
+
+```text
+Variable name: LINKS
+KV namespace: 作成した LINKS namespace
+```
+
+KV を設定しない場合も一時的なメモリ保存で動作しますが、Worker の再起動やインスタンス変更で短縮データが消えるため本番利用には適しません。ルートページも `worker.js` に内蔵しているため、Dashboard へのファイル単体アップロードでは `assets` 設定や GitHub Pages の設定は不要です。
+
 ## ローカルで試す
 
 ```bash
