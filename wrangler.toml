@@ -6,4 +6,4 @@ assets = { directory = ".", binding = "ASSETS" }
 
 [[kv_namespaces]]
 binding = "LINKS"
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
+id = "5ee0a21572a34bb5b1eaa88902e101ab"
