@@ -44,8 +44,8 @@ function showResult(entry) {
   resultMeta.textContent = `行き先: ${entry.url}`;
 
   const needsPublish = entry.mode === "vanity";
-  downloadBtn.classList.toggle("hidden", !needsPublish);
-  publishHint.classList.toggle("hidden", !needsPublish);
+  if (downloadBtn) downloadBtn.classList.toggle("hidden", !needsPublish);
+  if (publishHint) publishHint.classList.toggle("hidden", !needsPublish);
   result.classList.remove("hidden");
 }
 
@@ -197,36 +197,40 @@ form.addEventListener("submit", async (event) => {
   }
 });
 
-copyBtn.addEventListener("click", async () => {
-  if (!lastCreated) return;
-  try {
-    await navigator.clipboard.writeText(lastCreated.shortUrl);
-    copyBtn.textContent = "コピー済み";
-    setTimeout(() => {
-      copyBtn.textContent = "コピー";
-    }, 1600);
-  } catch {
-    showBanner("コピーに失敗しました。リンクを手動で選択してください。");
-  }
-});
+if (copyBtn) {
+  copyBtn.addEventListener("click", async () => {
+    if (!lastCreated) return;
+    try {
+      await navigator.clipboard.writeText(lastCreated.shortUrl);
+      copyBtn.textContent = "コピー済み";
+      setTimeout(() => {
+        copyBtn.textContent = "コピー";
+      }, 1600);
+    } catch {
+      showBanner("コピーに失敗しました。リンクを手動で選択してください。");
+    }
+  });
+}
 
-downloadBtn.addEventListener("click", async () => {
-  if (!lastCreated || lastCreated.mode !== "vanity") return;
-  const published = await loadLinks();
-  const pending = loadPending();
-  const merged = mergeLinks(published, pending);
+if (downloadBtn) {
+  downloadBtn.addEventListener("click", async () => {
+    if (!lastCreated || lastCreated.mode !== "vanity") return;
+    const published = await loadLinks();
+    const pending = loadPending();
+    const merged = mergeLinks(published, pending);
 
-  downloadText("links.json", `${JSON.stringify(merged, null, 2)}\n`);
-  downloadText(
-    `${lastCreated.code}__index.html`,
-    redirectHtml(lastCreated.url),
-  );
+    downloadText("links.json", `${JSON.stringify(merged, null, 2)}\n`);
+    downloadText(
+      `${lastCreated.code}__index.html`,
+      redirectHtml(lastCreated.url),
+    );
 
-  showBanner(
-    `links.json でリポジトリの同名ファイルを上書きし、${lastCreated.code}__index.html を ${lastCreated.code}/index.html として配置して Push してください。`,
-    "ok",
-  );
-});
+    showBanner(
+      `links.json でリポジトリの同名ファイルを上書きし、${lastCreated.code}__index.html を ${lastCreated.code}/index.html として配置して Push してください。`,
+      "ok",
+    );
+  });
+}
 
 const params = new URLSearchParams(location.search);
 if (params.get("missing") === "1") {
