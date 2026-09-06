@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Static URL shortener for 1lk.f5.si (GitHub Pages / Cloudflare Pages)",
+  "description": "Static URL shortener for 1.max7.work and 1lk.f5.si (GitHub Pages / Cloudflare Pages)",
   "scripts": {
     "start": "node serve.mjs",
     "dev": "node serve.mjs"

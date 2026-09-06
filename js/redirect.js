@@ -10,9 +10,9 @@ const textEl = document.getElementById("status-text");
 const homeLink = document.getElementById("home-link");
 
 function notFound(message) {
-  titleEl.textContent = "リンクが見つかりません";
-  textEl.textContent = message;
-  homeLink.classList.remove("hidden");
+  if (titleEl) titleEl.textContent = "リンクが見つかりません";
+  if (textEl) textEl.textContent = message;
+  if (homeLink) homeLink.classList.remove("hidden");
 }
 
 function pathToken() {
@@ -22,17 +22,23 @@ function pathToken() {
   return raw;
 }
 
+function hashToken() {
+  const raw = location.hash.replace(/^#+/, "");
+  if (!raw) return null;
+  return raw;
+}
+
 async function redirectTo(url) {
-  titleEl.textContent = "移動しています…";
-  textEl.textContent = url;
+  if (titleEl) titleEl.textContent = "移動しています…";
+  if (textEl) textEl.textContent = url;
   location.replace(url);
 }
 
 async function main() {
-  const token = pathToken();
+  const token = pathToken() || hashToken();
 
   if (!token) {
-    location.replace("/");
+    // index.html also loads this module so hash links can work on static hosting.
     return;
   }
 

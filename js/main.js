@@ -86,52 +86,105 @@ form.addEventListener("submit", async (event) => {
     if (useCustom) {
       if (!isValidCode(custom)) {
         showBanner(
-          "カスタムコードは 3〜32 文字の英数字・ハイフン・アンダースコアのみです",
+          "カスタムコードは 1〜6 文字の英数字（大文字小文字を区別）のみです",
         );
         return;
       }
 
-      const published = await loadLinks();
-      const pending = loadPending();
-      const existing = mergeLinks(published, pending);
+      const workerBase = window.ONELINK_WORKER_BASE || location.origin;
+      try {
+        const response = await fetch(`${workerBase.replace(/\/$/, "")}/api/shorten`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: normalized, custom }),
+        });
 
-      if (existing[custom]) {
-        showBanner("そのカスタムコードは既に使われています");
-        return;
+        if (!response.ok) {
+          const errorBody = await response.json().catch(() => null);
+          throw new Error(errorBody?.error || "Worker でのカスタム作成に失敗しました");
+        }
+
+        const data = await response.json();
+        showResult({
+          mode: "vanity",
+          code: data.code,
+          shortUrl: data.shortUrl,
+          url: normalized,
+          createdAt: new Date().toISOString(),
+        });
+        showBanner(
+          "Cloudflare Worker にカスタム短縮リンクを保存しました。",
+          "ok",
+        );
+      } catch {
+        const published = await loadLinks();
+        const pending = loadPending();
+        const existing = mergeLinks(published, pending);
+
+        if (existing[custom]) {
+          showBanner("そのカスタムコードは既に使われています");
+          return;
+        }
+
+        const entry = {
+          url: normalized,
+          createdAt: new Date().toISOString(),
+        };
+        pending[custom] = entry;
+        savePending(pending);
+
+        showResult({
+          mode: "vanity",
+          code: custom,
+          shortUrl: shortUrlFor(custom),
+          ...entry,
+        });
+        showBanner(
+          "カスタムコードは作成済みです。本番反映にはファイルをダウンロードして Push してください。",
+          "warn",
+        );
       }
-
-      const entry = {
-        url: normalized,
-        createdAt: new Date().toISOString(),
-      };
-      pending[custom] = entry;
-      savePending(pending);
-
-      showResult({
-        mode: "vanity",
-        code: custom,
-        shortUrl: shortUrlFor(custom),
-        ...entry,
-      });
-      showBanner(
-        "カスタムコードは作成済みです。本番反映にはファイルをダウンロードして Push してください。",
-        "warn",
-      );
     } else {
-      const payload = await encodeDestination(normalized);
-      const shortUrl = instantShortUrl(payload);
+      const workerBase = window.ONELINK_WORKER_BASE || location.origin;
+      try {
+        const response = await fetch(`${workerBase.replace(/\/$/, "")}/api/shorten`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: normalized }),
+        });
 
-      showResult({
-        mode: "instant",
-        code: payload,
-        shortUrl,
-        url: normalized,
-        createdAt: new Date().toISOString(),
-      });
-      showBanner(
-        "短縮リンクの準備ができました。どのデバイスからでもすぐに使えます。",
-        "ok",
-      );
+        if (!response.ok) {
+          throw new Error("Worker での作成に失敗しました");
+        }
+
+        const data = await response.json();
+        showResult({
+          mode: "instant",
+          code: data.code,
+          shortUrl: data.shortUrl,
+          url: normalized,
+          createdAt: new Date().toISOString(),
+        });
+        showBanner(
+          "Cloudflare Worker で短縮リンクを作成しました。どのデバイスからでも使えます。",
+          "ok",
+        );
+      } catch {
+        const payload = await encodeDestination(normalized);
+        const shortUrl = instantShortUrl(payload);
+
+        showResult({
+          mode: "instant",
+          code: payload,
+          shortUrl,
+          url: normalized,
+          createdAt: new Date().toISOString(),
+        });
+        showBanner(
+          "短縮リンクの準備ができました。どのデバイスからでもすぐに使えます。",
+          "ok",
+        );
+      }
     }
 
     urlInput.value = "";

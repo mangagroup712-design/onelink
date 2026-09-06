@@ -1,4 +1,5 @@
-const PUBLIC_ORIGIN = "https://1lk.f5.si";
+const DEFAULT_PUBLIC_ORIGIN = "https://1.max7.work";
+const SUPPORTED_PUBLIC_HOSTS = new Set(["1.max7.work", "1lk.f5.si"]);
 const STORAGE_KEY = "onelink-pending";
 const RESERVED = new Set([
   "css",
@@ -100,13 +101,16 @@ function unpackUrlParts(flags, bodyBytes) {
 }
 
 export function publicOrigin() {
-  if (
-    typeof location !== "undefined" &&
-    /^(localhost|127\.0\.0\.1)$/i.test(location.hostname)
-  ) {
-    return location.origin;
+  if (typeof location !== "undefined") {
+    const hostname = location.hostname.toLowerCase();
+    if (
+      SUPPORTED_PUBLIC_HOSTS.has(hostname) ||
+      /^(localhost|127\.0\.0\.1)$/i.test(hostname)
+    ) {
+      return location.origin;
+    }
   }
-  return PUBLIC_ORIGIN;
+  return DEFAULT_PUBLIC_ORIGIN;
 }
 
 export function normalizeUrl(input) {
@@ -130,7 +134,7 @@ export function normalizeUrl(input) {
 
 export function isValidCode(code) {
   return (
-    /^[a-zA-Z0-9_-]{3,32}$/.test(code) && !RESERVED.has(code.toLowerCase())
+    /^[a-zA-Z0-9]{1,6}$/.test(code) && !RESERVED.has(code.toLowerCase())
   );
 }
 
@@ -242,6 +246,10 @@ export function instantShortUrl(payload) {
   return `${publicOrigin()}/${payload}`;
 }
 
+export function instantShortUrlWithPath(payload) {
+  return instantShortUrl(payload);
+}
+
 export function redirectHtml(destination) {
   const safe = destination
     .replace(/&/g, "&amp;")
@@ -264,4 +272,4 @@ export function redirectHtml(destination) {
 `;
 }
 
-export { PUBLIC_ORIGIN };
+export { DEFAULT_PUBLIC_ORIGIN };
